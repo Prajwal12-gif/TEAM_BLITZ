@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EcoFinds - Unified Application</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0; padding: 0;
+      background: #f5f5f5;
+    }
+
+    header {
+      background: #2e7d32;
+      color: white;
+      padding: 1rem;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+
+    button {
+      margin: 0.2rem;
+      padding: 0.5rem 1rem;
+      border: none;
+      background: #388e3c;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+      background: #2e7d32;
+    }
+
+    main {
+      padding: 1rem;
+    }
+
+    #product-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px,1fr));
+      gap: 1rem;
+    }
+
+    .product {
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      transition: transform 0.2s;
+    }
+
+    .product:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+    .product img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+
+    .product h3 {
+      margin: 0.5rem 0;
+      color: #2e7d32;
+    }
+
+    .product p {
+      margin: 0.25rem 0;
+      font-size: 0.9rem;
+    }
+
+    .product-price {
+      font-weight: bold;
+      color: #388e3c;
+      font-size: 1.1rem;
+    }
+
+    .product-status {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      margin: 0.5rem 0;
+    }
+
+    .status-available {
+      background: #e8f5e8;
+      color: #2e7d32;
+    }
+
+    .status-sold {
+      background: #ffebee;
+      color: #c62828;
+    }
+
+    .product-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .btn-buy {
+      background: #4caf50;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .btn-sell {
+      background: #ff9800;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .btn-buy:hover {
+      background: #45a049;
+    }
+
+    .btn-sell:hover {
+      background: #f57c00;
+    }
+
+    .btn-buy:disabled,
+    .btn-sell:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .modal {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex; justify-content: center; align-items: center;
+    }
+
+    .modal-content {
+      background: white; padding: 2rem;
+      border-radius: 8px; text-align: center;
+    }
+
+    .hidden { display: none; }
+
+    input, textarea {
+      width: 100%;
+      padding: 0.5rem;
+      margin: 0.5rem 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    .server-status {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      padding: 0.5rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+
+    .server-running {
+      background: #4caf50;
+      color: white;
+    }
+
+    .server-stopped {
+      background: #f44336;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div id="server-status" class="server-status server-stopped">
+    Backend: Stopped
+  </div>
+
+  <header>
+    <h1>🌱 BARTERPLACE</h1>
+    <div id="auth-controls">
+      <button onclick="showLogin()">Login</button>
+      <button onclick="showRegister()">Register</button>
+      <button onclick="logout()" id="logoutBtn" style="display:none;">Logout</button>
+      <button onclick="showTransactions()" id="transactionsBtn" style="display:none;">My Transactions</button>
+      <button onclick="toggleServer()" id="serverBtn">Start Backend</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="auth-section" class="modal hidden">
+      <div class="modal-content">
+        <h2 id="auth-title">Login</h2>
+        <div style="background: #e8f5e8; padding: 0.5rem; margin: 0.5rem 0; border-radius: 4px; font-size: 0.9rem;">
+          <strong>Demo Account:</strong><br>
+          Username: <code>demo</code><br>
+          Password: <code>demo123</code>
+        </div>
+        <input type="text" id="username" placeholder="Username"/>
+        <input type="password" id="password" placeholder="Password"/>
+        <button onclick="submitAuth()">Submit</button>
+        <button onclick="closeModal()">Cancel</button>
+        <p id="auth-error"></p>
+      </div>
+    </section>
+
+    <section id="new-product" class="hidden">
+      <h2>Add New Product</h2>
+      <input type="text" id="p-title" placeholder="Title"/>
+      <input type="text" id="p-category" placeholder="Category"/>
+      <input type="number" id="p-price" placeholder="Price"/>
+      <textarea id="p-desc" placeholder="Description"></textarea>
+      <button onclick="addProduct()">Add Product</button>
+    </section>
+
+    <section id="products">
+      <h2>Product Listings</h2>
+      <input type="text" id="search" placeholder="Search..." oninput="loadProducts()"/>
+      <div id="product-list"></div>
+    </section>
+
+    <section id="transactions" class="hidden">
+      <h2>My Transactions</h2>
+      <div id="transaction-list"></div>
+    </section>
+
+    <!-- Transaction Modal -->
+    <section id="transaction-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Complete Purchase</h2>
+        <div id="transaction-product-info"></div>
+        <div style="margin: 1rem 0;">
+          <label><strong>Payment Method:</strong></label>
+          <select id="payment-method" style="width: 100%; padding: 0.5rem; margin: 0.5rem 0;">
+            <option value="credit-card">Credit Card</option>
+            <option value="debit-card">Debit Card</option>
+            <option value="paypal">PayPal</option>
+            <option value="bank-transfer">Bank Transfer</option>
+          </select>
+        </div>
+        <div style="margin: 1rem 0;">
+          <label><strong>Shipping Address:</strong></label>
+          <textarea id="shipping-address" placeholder="Enter your shipping address" style="width: 100%; padding: 0.5rem; margin: 0.5rem 0; height: 80px;"></textarea>
+        </div>
+        <div style="margin: 1rem 0;">
+          <label><strong>Contact Number:</strong></label>
+          <input type="tel" id="contact-number" placeholder="Your phone number" style="width: 100%; padding: 0.5rem; margin: 0.5rem 0;">
+        </div>
+        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+          <button onclick="confirmPurchase()" style="background: #4caf50; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer;">Confirm Purchase</button>
+          <button onclick="closeTransactionModal()" style="background: #f44336; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sell Product Modal -->
+    <section id="sell-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Sell Your Product</h2>
+        <div style="margin: 1rem 0;">
+          <label><strong>Product Title:</strong></label>
+          <input type="text" id="sell-title" placeholder="Enter product title" style="width: 100%; padding: 0.5rem; margin: 0.5rem 0;">
+        </div>
+        <div style="margin: 1rem 0;">
+          <label><strong>Category:</strong></label>
+          <select id="sell-category" style="width: 100%; padding: 0.5rem; margin: 0.5rem 0;">
+            <option value="Electronics">Electronics</option>
+            <option value="Furniture">Furniture</option>
+            <option value="Automobiles">Automobiles</option>
+            <option value="Home & Garden">Home & Garden</option>
+            <option value="Beauty & Personal Care">Beauty & Personal Care</option>
+            <option value="Kitchen & Dining">Kitchen & Dining</option>
+            <option value="Sports & Fitness">Sports & Fitness</option>
+            <option value="Bags & Accessories">Bags & Accessories</option>
+            <option value="Office & Stationery">Office & Stationery</option>
+            <option value="Food & Beverages">Food & Beverages</option>
+            <option value="Drinkware">Drinkware</option>
+          </select>
+        </div>
+        <div style="margin: 1rem 0;">
+          <label><strong>Price (₹):</strong></label>
+          <input type="number" id="sell-price" placeholder="Enter price" step="0.01" style="width: 100%; padding: 0.5rem; margin: 0.5rem 0;">
+        </div>
+        <div style="margin: 1rem 0;">
+          <label><strong>Product Description:</strong></label>
+          <textarea id="sell-description" placeholder="Describe your product in detail..." style="width: 100%; padding: 0.5rem; margin: 0.5rem 0; height: 120px;"></textarea>
+        </div>
+        <div style="margin: 1rem 0;">
+          <label><strong>Condition:</strong></label>
+          <select id="sell-condition" style="width: 100%; padding: 0.5rem; margin: 0.5rem 0;">
+            <option value="New">New</option>
+            <option value="Like New">Like New</option>
+            <option value="Good">Good</option>
+            <option value="Fair">Fair</option>
+            <option value="Poor">Poor</option>
+          </select>
+        </div>
+        <div style="margin: 1rem 0;">
+          <label><strong>Contact Information:</strong></label>
+          <input type="text" id="sell-contact" placeholder="Your contact info for buyers" style="width: 100%; padding: 0.5rem; margin: 0.5rem 0;">
+        </div>
+        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+          <button onclick="confirmSell()" style="background: #ff9800; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer;">List for Sale</button>
+          <button onclick="closeSellModal()" style="background: #f44336; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    // ==================== BACKEND CODE ====================
+    
+    // Simple password hashing simulation
+    function hashPassword(password) {
+      return btoa(password + "salt");
+    }
+    
+    function comparePassword(password, hash) {
+      return hash === hashPassword(password);
+    }
+    
+    // Simple in-memory database simulation
+    let users = [
+      {
+        id: 1,
+        username: "demo",
+        password: hashPassword("demo123")
+      }
+    ];
+    let products = [
+      {
+        id: 1,
+        title: "Organic Cotton Tote Bag",
+        description: "Eco-friendly reusable tote bag made from 100% organic cotton. Perfect for grocery shopping and daily use. Reduces plastic waste and supports sustainable farming.",
+        category: "Bags & Accessories",
+        price: 1327,
+        image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 2,
+        title: "Bamboo Kitchen Utensils Set",
+        description: "Complete set of 6 bamboo kitchen utensils including spoons, spatulas, and tongs. Sustainable, durable, and naturally antibacterial. Perfect for eco-conscious cooking.",
+        category: "Kitchen & Dining",
+        price: 2074,
+        image: "https://images.unsplash.com/photo-1599580637803-7ec14f1a2073?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 3,
+        title: "Solar-Powered Phone Charger",
+        description: "Portable solar charger with 10,000mAh capacity and dual USB ports. Perfect for outdoor adventures, camping, and emergency situations. Charges in 6-8 hours of sunlight.",
+        category: "Electronics",
+        price: 3817,
+        image: "https://images.unsplash.com/photo-1611273426858-450d8e3c9fce?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 4,
+        title: "Recycled Glass Water Bottle",
+        description: "Insulated water bottle made from 100% recycled glass with silicone sleeve. Keeps drinks cold for 24 hours or hot for 12 hours. BPA-free and dishwasher safe.",
+        category: "Drinkware",
+        price: 1659,
+        image: "https://images.unsplash.com/photo-1523362628745-0c100150b504?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 5,
+        title: "Hemp Seed Oil Face Cream",
+        description: "Natural face cream with hemp seed oil, shea butter, and organic ingredients. Cruelty-free, vegan, and perfect for sensitive skin. 50ml jar.",
+        category: "Beauty & Personal Care",
+        price: 2406,
+        image: "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 6,
+        title: "Compostable Phone Case",
+        description: "Biodegradable phone case made from plant-based materials and wheat straw. Fits iPhone 12/13/14 and Samsung Galaxy S21/S22. 100% compostable in 6 months.",
+        category: "Electronics",
+        price: 1078,
+        image: "https://images.unsplash.com/photo-1601593346740-925612772716?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 7,
+        title: "Organic Herbal Tea Collection",
+        description: "Assorted collection of 20 organic herbal teas including chamomile, peppermint, and green tea. Caffeine-free options available. Sustainably sourced and fair trade.",
+        category: "Food & Beverages",
+        price: 1576,
+        image: "https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 8,
+        title: "Cork Yoga Mat",
+        description: "Natural cork yoga mat with non-slip surface and antimicrobial properties. Easy to clean, lightweight, and provides excellent grip. Includes carrying strap.",
+        category: "Sports & Fitness",
+        price: 2987,
+        image: "https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 9,
+        title: "LED Grow Light Bulb",
+        description: "Energy-efficient LED bulb perfect for indoor plants and herbs. Uses 80% less energy than traditional bulbs. Full spectrum light promotes healthy plant growth.",
+        category: "Home & Garden",
+        price: 746,
+        image: "https://images.unsplash.com/photo-1621906819870-bb7c6dcb3b2e?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 10,
+        title: "Recycled Paper Notebook Set",
+        description: "Set of 3 notebooks made from 100% recycled paper with eco-friendly binding. Perfect for eco-conscious students and professionals. 200 pages each.",
+        category: "Office & Stationery",
+        price: 1244,
+        image: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 11,
+        title: "Beeswax Food Wraps Set",
+        description: "Set of 6 beeswax food wraps in various sizes. Natural alternative to plastic wrap. Reusable, washable, and keeps food fresh. Made with organic cotton and beeswax.",
+        category: "Kitchen & Dining",
+        price: 1908,
+        image: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 12,
+        title: "Wooden Hair Brush",
+        description: "Handcrafted wooden hair brush with natural boar bristles. Reduces static, distributes natural oils, and is completely biodegradable. Made from sustainable bamboo.",
+        category: "Beauty & Personal Care",
+        price: 1410,
+        image: "https://images.unsplash.com/photo-1570194065650-d99fb4bedf0a?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 13,
+        title: "Stainless Steel Straw Set",
+        description: "Set of 4 stainless steel straws with cleaning brush and carrying case. Perfect for reducing single-use plastic. Dishwasher safe and comes in different sizes.",
+        category: "Drinkware",
+        price: 829,
+        image: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 14,
+        title: "Organic Cotton Bed Sheets",
+        description: "Set of 2 organic cotton bed sheets (fitted + flat). 100% organic cotton, chemical-free, and hypoallergenic. Available in multiple colors and sizes.",
+        category: "Home & Garden",
+        price: 4149,
+        image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 15,
+        title: "Bamboo Toothbrush Set",
+        description: "Set of 4 bamboo toothbrushes with soft bristles. Biodegradable handle, BPA-free bristles, and comes in eco-friendly packaging. Perfect for sustainable oral care.",
+        category: "Beauty & Personal Care",
+        price: 995,
+        image: "https://images.unsplash.com/photo-1570194065650-d99fb4bedf0a?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 16,
+        title: "Reusable Produce Bags",
+        description: "Set of 10 mesh produce bags made from organic cotton. Perfect for grocery shopping to reduce plastic bag usage. Machine washable and lightweight.",
+        category: "Bags & Accessories",
+        price: 1161,
+        image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 17,
+        title: "Cast Iron Skillet",
+        description: "10-inch pre-seasoned cast iron skillet. Naturally non-stick, oven-safe, and lasts a lifetime. Perfect for sustainable cooking and reduces need for non-stick pans.",
+        category: "Kitchen & Dining",
+        price: 3319,
+        image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 18,
+        title: "Natural Loofah Sponge",
+        description: "100% natural loofah sponge for body and dish washing. Biodegradable, exfoliating, and perfect for zero-waste bathroom routine. Grows on vines naturally.",
+        category: "Beauty & Personal Care",
+        price: 663,
+        image: "https://images.unsplash.com/photo-1570194065650-d99fb4bedf0a?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 19,
+        title: "Seed Starting Kit",
+        description: "Complete seed starting kit with biodegradable pots, organic soil, and 5 herb seed packets. Perfect for starting your own sustainable garden at home.",
+        category: "Home & Garden",
+        price: 1659,
+        image: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 20,
+        title: "Eco-Friendly Laundry Detergent",
+        description: "Concentrated laundry detergent made from plant-based ingredients. 64 loads per bottle, biodegradable, and comes in recyclable packaging. Hypoallergenic formula.",
+        category: "Home & Garden",
+        price: 2074,
+        image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 21,
+        title: "Bamboo Dining Table",
+        description: "Sustainable bamboo dining table for 6 people. Handcrafted from certified bamboo, eco-friendly finish, and modern minimalist design. Perfect for eco-conscious homes.",
+        category: "Furniture",
+        price: 24899,
+        image: "https://images.unsplash.com/photo-1549497538-303791108f95?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 22,
+        title: "Recycled Wood Bookshelf",
+        description: "5-tier bookshelf made from reclaimed wood. Each piece is unique with natural wood grain patterns. Sturdy construction and eco-friendly materials.",
+        category: "Furniture",
+        price: 15769,
+        image: "https://images.unsplash.com/photo-1562113530-57ba537cea38?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 23,
+        title: "Organic Cotton Sofa",
+        description: "3-seater sofa with organic cotton upholstery and natural latex cushions. Chemical-free, hypoallergenic, and sustainably sourced materials.",
+        category: "Furniture",
+        price: 74699,
+        image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 24,
+        title: "MacBook Pro M2",
+        description: "13-inch MacBook Pro with M2 chip, 8GB RAM, 256GB SSD. Excellent condition, used for 6 months. Perfect for professionals and students.",
+        category: "Electronics",
+        price: 107899,
+        image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 25,
+        title: "iPhone 14 Pro",
+        description: "iPhone 14 Pro 128GB in Space Black. Like new condition with original box and accessories. Unlocked for all carriers.",
+        category: "Electronics",
+        price: 74699,
+        image: "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 26,
+        title: "Sony WH-1000XM4 Headphones",
+        description: "Premium noise-canceling wireless headphones. Industry-leading noise cancellation, 30-hour battery life, and superior sound quality.",
+        category: "Electronics",
+        price: 20749,
+        image: "https://images.unsplash.com/photo-1484704849700-f032a568e944?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 27,
+        title: "Tesla Model 3",
+        description: "2022 Tesla Model 3 Standard Range Plus. 20,000 miles, excellent condition, all-wheel drive, autopilot enabled. Clean title and service records.",
+        category: "Automobiles",
+        price: 3236999,
+        image: "https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 28,
+        title: "Toyota Prius Hybrid",
+        description: "2019 Toyota Prius Hybrid with 45,000 miles. Excellent fuel economy, reliable hybrid technology, and well-maintained. Perfect for eco-conscious drivers.",
+        category: "Automobiles",
+        price: 1908999,
+        image: "https://images.unsplash.com/photo-1549317336-206569e8475c?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 29,
+        title: "Electric Bicycle",
+        description: "Eco-friendly electric bicycle with 50-mile range. Perfect for commuting and reducing carbon footprint. Includes charger and safety gear.",
+        category: "Automobiles",
+        price: 107899,
+        image: "https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 30,
+        title: "Smart Home Hub",
+        description: "Eco-friendly smart home hub that controls all your devices. Energy-efficient design, voice control, and compatible with 100+ smart devices.",
+        category: "Electronics",
+        price: 12449,
+        image: "https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 31,
+        title: "Reclaimed Wood Coffee Table",
+        description: "Unique coffee table made from reclaimed barn wood. Rustic industrial design with metal legs. Each piece tells a story of sustainability.",
+        category: "Furniture",
+        price: 33199,
+        image: "https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 32,
+        title: "Gaming Laptop",
+        description: "High-performance gaming laptop with RTX 4060, 16GB RAM, 1TB SSD. Perfect for gaming and content creation. Barely used, excellent condition.",
+        category: "Electronics",
+        price: 132799,
+        image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 33,
+        title: "Honda Civic Hybrid",
+        description: "2020 Honda Civic Hybrid with 30,000 miles. Excellent fuel efficiency, reliable hybrid system, and well-maintained service records.",
+        category: "Automobiles",
+        price: 1576999,
+        image: "https://images.unsplash.com/photo-1549317336-206569e8475c?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 34,
+        title: "Standing Desk",
+        description: "Electric standing desk made from sustainable bamboo. Height adjustable, memory presets, and eco-friendly materials. Perfect for home office.",
+        category: "Furniture",
+        price: 49799,
+        image: "https://images.unsplash.com/photo-1541558869434-2840d308329a?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      },
+      {
+        id: 35,
+        title: "Wireless Charging Pad",
+        description: "Fast wireless charging pad with eco-friendly design. Compatible with all Qi-enabled devices. Made from recycled materials.",
+        category: "Electronics",
+        price: 3319,
+        image: "https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=300&h=300&fit=crop",
+        userId: 1,
+        status: "available"
+      }
+    ];
+    let nextUserId = 1;
+    let nextProductId = 36;
+    let transactions = [];
+    let nextTransactionId = 1;
+    
+    // JWT-like token simulation
+    const SECRET = "ecofinds-secret";
+    
+    function generateToken(user) {
+      return btoa(JSON.stringify({ id: user.id, username: user.username, exp: Date.now() + 3600000 }));
+    }
+    
+    function verifyToken(token) {
+      try {
+        const decoded = JSON.parse(atob(token));
+        if (decoded.exp < Date.now()) return null;
+        return decoded;
+      } catch {
+        return null;
+      }
+    }
+    
+    // Backend API simulation
+    class BackendAPI {
+      constructor() {
+        this.running = false;
+      }
+      
+      start() {
+        this.running = true;
+        updateServerStatus(true);
+        console.log("✅ Backend server started");
+      }
+      
+      stop() {
+        this.running = false;
+        updateServerStatus(false);
+        console.log("❌ Backend server stopped");
+      }
+      
+      async register(username, password) {
+        if (!this.running) throw new Error("Backend not running");
+        
+        const existingUser = users.find(u => u.username === username);
+        if (existingUser) {
+          throw new Error("Username already exists");
+        }
+        
+        const user = {
+          id: nextUserId++,
+          username,
+          password: hashPassword(password)
+        };
+        users.push(user);
+        return { message: "User registered" };
+      }
+      
+      async login(username, password) {
+        if (!this.running) throw new Error("Backend not running");
+        
+        const user = users.find(u => u.username === username);
+        if (!user || !comparePassword(password, user.password)) {
+          throw new Error("Invalid credentials");
+        }
+        
+        const token = generateToken(user);
+        return { token };
+      }
+      
+      async getProducts() {
+        if (!this.running) throw new Error("Backend not running");
+        return products;
+      }
+      
+      async addProduct(productData, token) {
+        if (!this.running) throw new Error("Backend not running");
+        
+        const user = verifyToken(token);
+        if (!user) throw new Error("Invalid token");
+        
+        const product = {
+          id: nextProductId++,
+          ...productData,
+          userId: user.id,
+          status: "available"
+        };
+        products.push(product);
+        return product;
+      }
+      
+      async buyProduct(productId, token) {
+        if (!this.running) throw new Error("Backend not running");
+        
+        const user = verifyToken(token);
+        if (!user) throw new Error("Invalid token");
+        
+        const product = products.find(p => p.id === productId);
+        if (!product) throw new Error("Product not found");
+        if (product.status !== "available") throw new Error("Product not available");
+        if (product.userId === user.id) throw new Error("Cannot buy your own product");
+        
+        // Create transaction
+        const transaction = {
+          id: nextTransactionId++,
+          productId: productId,
+          buyerId: user.id,
+          sellerId: product.userId,
+          price: product.price,
+          status: "completed",
+          date: new Date().toISOString()
+        };
+        transactions.push(transaction);
+        
+        // Mark product as sold
+        product.status = "sold";
+        product.buyerId = user.id;
+        
+        return { message: "Purchase successful", transaction };
+      }
+      
+      async sellProduct(productId, token) {
+        if (!this.running) throw new Error("Backend not running");
+        
+        const user = verifyToken(token);
+        if (!user) throw new Error("Invalid token");
+        
+        const product = products.find(p => p.id === productId);
+        if (!product) throw new Error("Product not found");
+        if (product.userId !== user.id) throw new Error("You can only sell your own products");
+        if (product.status !== "available") throw new Error("Product not available for sale");
+        
+        // Mark product as for sale (already available, but this confirms it)
+        product.status = "available";
+        
+        return { message: "Product is now for sale", product };
+      }
+      
+      async getTransactions(token) {
+        if (!this.running) throw new Error("Backend not running");
+        
+        const user = verifyToken(token);
+        if (!user) throw new Error("Invalid token");
+        
+        return transactions.filter(t => t.buyerId === user.id || t.sellerId === user.id);
+      }
+    }
+    
+    // ==================== FRONTEND CODE ====================
+    
+    const backend = new BackendAPI();
+    let authMode = "login";
+    let token = localStorage.getItem("token");
+    
+    function updateServerStatus(running) {
+      const statusEl = document.getElementById("server-status");
+      const btnEl = document.getElementById("serverBtn");
+      
+      if (running) {
+        statusEl.textContent = "Backend: Running";
+        statusEl.className = "server-status server-running";
+        btnEl.textContent = "Stop Backend";
+      } else {
+        statusEl.textContent = "Backend: Stopped";
+        statusEl.className = "server-status server-stopped";
+        btnEl.textContent = "Start Backend";
+      }
+    }
+    
+    function toggleServer() {
+      if (backend.running) {
+        backend.stop();
+      } else {
+        backend.start();
+        loadProducts();
+      }
+    }
+    
+    // Show login/register modal
+    function showLogin() {
+      authMode = "login";
+      document.getElementById("auth-title").textContent = "Login";
+      document.getElementById("auth-section").classList.remove("hidden");
+    }
+    
+    function showRegister() {
+      authMode = "register";
+      document.getElementById("auth-title").textContent = "Register";
+      document.getElementById("auth-section").classList.remove("hidden");
+    }
+    
+    function closeModal() {
+      document.getElementById("auth-section").classList.add("hidden");
+    }
+    
+    // Submit login/register
+    async function submitAuth() {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      
+      if (!username || !password) {
+        document.getElementById("auth-error").textContent = "Please fill in all fields";
+        return;
+      }
+      
+      try {
+        let data;
+        if (authMode === "login") {
+          data = await backend.login(username, password);
+        } else {
+          data = await backend.register(username, password);
+        }
+        
+        if (authMode === "login") {
+          token = data.token;
+          localStorage.setItem("token", token);
+          document.getElementById("logoutBtn").style.display = "inline-block";
+          document.getElementById("transactionsBtn").style.display = "inline-block";
+          document.getElementById("new-product").classList.remove("hidden");
+          closeModal();
+          loadProducts();
+        } else {
+          alert("Registered successfully, now login.");
+          closeModal();
+        }
+      } catch (error) {
+        document.getElementById("auth-error").textContent = error.message;
+      }
+    }
+    
+    // Logout
+    function logout() {
+      token = null;
+      localStorage.removeItem("token");
+      document.getElementById("logoutBtn").style.display = "none";
+      document.getElementById("transactionsBtn").style.display = "none";
+      document.getElementById("new-product").classList.add("hidden");
+      document.getElementById("transactions").classList.add("hidden");
+    }
+    
+    // Show transactions
+    async function showTransactions() {
+      if (!token) {
+        alert("Please login to view transactions");
+        return;
+      }
+      
+      try {
+        const transactions = await backend.getTransactions(token);
+        const list = document.getElementById("transaction-list");
+        list.innerHTML = "";
+        
+        if (transactions.length === 0) {
+          list.innerHTML = "<p>No transactions found.</p>";
+        } else {
+          transactions.forEach(t => {
+            const product = products.find(p => p.id === t.productId);
+            const div = document.createElement("div");
+            div.className = "product";
+            div.innerHTML = `
+              <h3>${product ? product.title : 'Product #' + t.productId}</h3>
+              <p><strong>Price:</strong> ₹${t.price}</p>
+              <p><strong>Date:</strong> ${new Date(t.date).toLocaleDateString()}</p>
+              <p><strong>Status:</strong> ${t.status}</p>
+            `;
+            list.appendChild(div);
+          });
+        }
+        
+        document.getElementById("transactions").classList.remove("hidden");
+        document.getElementById("products").classList.add("hidden");
+      } catch (error) {
+        alert("Error loading transactions: " + error.message);
+      }
+    }
+    
+    // Add product
+    async function addProduct() {
+      const title = document.getElementById("p-title").value;
+      const description = document.getElementById("p-desc").value;
+      const category = document.getElementById("p-category").value;
+      const price = document.getElementById("p-price").value;
+      
+      if (!title || !description || !category || !price) {
+        alert("Please fill in all fields");
+        return;
+      }
+      
+      try {
+        await backend.addProduct({ title, description, category, price, image: "" }, token);
+        
+        // Clear form
+        document.getElementById("p-title").value = "";
+        document.getElementById("p-desc").value = "";
+        document.getElementById("p-category").value = "";
+        document.getElementById("p-price").value = "";
+        loadProducts();
+        alert("Product added successfully!");
+      } catch (error) {
+        alert("Error adding product: " + error.message);
+      }
+    }
+    
+    // Initiate buy process
+    function initiateBuy(productId) {
+      if (!token) {
+        alert("Please login to buy products");
+        return;
+      }
+      
+      const product = products.find(p => p.id === productId);
+      if (!product) {
+        alert("Product not found");
+        return;
+      }
+      
+      // Show transaction modal
+      document.getElementById("transaction-product-info").innerHTML = `
+        <div style="border: 1px solid #ddd; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
+          <h3>${product.title}</h3>
+          <p><strong>Category:</strong> ${product.category}</p>
+          <p><strong>Price:</strong> ₹${product.price}</p>
+          <p><strong>Description:</strong> ${product.description}</p>
+        </div>
+      `;
+      
+      // Store product ID for later use
+      window.currentBuyProductId = productId;
+      
+      // Show modal
+      document.getElementById("transaction-modal").classList.remove("hidden");
+    }
+    
+    // Confirm purchase
+    async function confirmPurchase() {
+      const paymentMethod = document.getElementById("payment-method").value;
+      const shippingAddress = document.getElementById("shipping-address").value;
+      const contactNumber = document.getElementById("contact-number").value;
+      
+      if (!shippingAddress || !contactNumber) {
+        alert("Please fill in all required fields");
+        return;
+      }
+      
+      try {
+        const result = await backend.buyProduct(window.currentBuyProductId, token);
+        alert("Purchase successful! You will be contacted for delivery details.");
+        closeTransactionModal();
+        loadProducts();
+      } catch (error) {
+        alert("Error buying product: " + error.message);
+      }
+    }
+    
+    // Close transaction modal
+    function closeTransactionModal() {
+      document.getElementById("transaction-modal").classList.add("hidden");
+      // Clear form
+      document.getElementById("payment-method").value = "credit-card";
+      document.getElementById("shipping-address").value = "";
+      document.getElementById("contact-number").value = "";
+      window.currentBuyProductId = null;
+    }
+    
+    // Initiate sell process
+    function initiateSell(productId) {
+      if (!token) {
+        alert("Please login to sell products");
+        return;
+      }
+      
+      const product = products.find(p => p.id === productId);
+      if (!product) {
+        alert("Product not found");
+        return;
+      }
+      
+      // Pre-fill form with similar product details
+      document.getElementById("sell-title").value = product.title;
+      document.getElementById("sell-category").value = product.category;
+      document.getElementById("sell-price").value = product.price;
+      document.getElementById("sell-description").value = product.description;
+      
+      // Store product ID for reference
+      window.currentSellProductId = productId;
+      
+      // Show modal
+      document.getElementById("sell-modal").classList.remove("hidden");
+    }
+    
+    // Confirm sell
+    async function confirmSell() {
+      const title = document.getElementById("sell-title").value;
+      const category = document.getElementById("sell-category").value;
+      const price = document.getElementById("sell-price").value;
+      const description = document.getElementById("sell-description").value;
+      const condition = document.getElementById("sell-condition").value;
+      const contact = document.getElementById("sell-contact").value;
+      
+      if (!title || !category || !price || !description || !contact) {
+        alert("Please fill in all required fields");
+        return;
+      }
+      
+      try {
+        const productData = {
+          title,
+          description: `${description}\n\nCondition: ${condition}\nContact: ${contact}`,
+          category,
+          price: parseFloat(price),
+          image: ""
+        };
+        
+        await backend.addProduct(productData, token);
+        alert("Product listed for sale successfully!");
+        closeSellModal();
+        loadProducts();
+      } catch (error) {
+        alert("Error listing product: " + error.message);
+      }
+    }
+    
+    // Close sell modal
+    function closeSellModal() {
+      document.getElementById("sell-modal").classList.add("hidden");
+      // Clear form
+      document.getElementById("sell-title").value = "";
+      document.getElementById("sell-category").value = "Electronics";
+      document.getElementById("sell-price").value = "";
+      document.getElementById("sell-description").value = "";
+      document.getElementById("sell-condition").value = "New";
+      document.getElementById("sell-contact").value = "";
+      window.currentSellProductId = null;
+    }
+    
+    // Load products
+    async function loadProducts() {
+      try {
+        const q = document.getElementById("search").value.toLowerCase();
+        const products = await backend.getProducts();
+        const list = document.getElementById("product-list");
+        list.innerHTML = "";
+        
+        products
+          .filter(p => p.title.toLowerCase().includes(q) || p.category.toLowerCase().includes(q))
+          .forEach(p => {
+            const div = document.createElement("div");
+            div.className = "product";
+            
+            const currentUser = token ? verifyToken(token) : null;
+            const isOwner = currentUser && p.userId === currentUser.id;
+            const isAvailable = p.status === "available";
+            
+            div.innerHTML = `
+              <img src="${p.image}" alt="${p.title}" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
+              <h3>${p.title}</h3>
+              <p>${p.description}</p>
+              <p><b>${p.category}</b></p>
+              <p class="product-price">₹${p.price}</p>
+              <span class="product-status status-${p.status}">${p.status.toUpperCase()}</span>
+              <div class="product-actions">
+                ${isAvailable ? `<button class="btn-buy" onclick="initiateBuy(${p.id})">Buy Now</button>` : ''}
+                <button class="btn-sell" onclick="initiateSell(${p.id})">Sell Similar</button>
+              </div>
+            `;
+            list.appendChild(div);
+          });
+      } catch (error) {
+        console.error("Error loading products:", error);
+        document.getElementById("product-list").innerHTML = "<p>Error loading products. Make sure the backend is running.</p>";
+      }
+    }
+    
+    // Initialize app
+    document.addEventListener("DOMContentLoaded", function() {
+      loadProducts();
+      
+      // Check if user is already logged in
+      if (token) {
+        document.getElementById("logoutBtn").style.display = "inline-block";
+        document.getElementById("transactionsBtn").style.display = "inline-block";
+        document.getElementById("new-product").classList.remove("hidden");
+      }
+      
+      // Auto-start backend for demo
+      setTimeout(() => {
+        backend.start();
+        loadProducts();
+      }, 1000);
+    });
+    
+    // Make functions globally available
+    window.showLogin = showLogin;
+    window.showRegister = showRegister;
+    window.closeModal = closeModal;
+    window.submitAuth = submitAuth;
+    window.logout = logout;
+    window.addProduct = addProduct;
+    window.loadProducts = loadProducts;
+    window.toggleServer = toggleServer;
+    window.initiateBuy = initiateBuy;
+    window.initiateSell = initiateSell;
+    window.confirmPurchase = confirmPurchase;
+    window.confirmSell = confirmSell;
+    window.closeTransactionModal = closeTransactionModal;
+    window.closeSellModal = closeSellModal;
+    window.showTransactions = showTransactions;
+  </script>
+</body>
+</html>
